@@ -1,6 +1,9 @@
 language: node_js
-dist: trusty
-node_js: node
+dist: focal
+node_js:
+  - "18"
+  - "20" 
+  - "node"
 before_script:
   - npm install
   - npm run serve &

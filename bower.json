@@ -1,10 +1,10 @@
 {
-  "name": "fast-json-patch",
-  "version": "3.0.2",
-  "homepage": "https://github.com/Starcounter-Jack/JSON-Patch",
-  "description": "Fast implementation of JSON-Patch (RFC-6902) with duplex (observe changes) capabilities",
+  "name": "ordered-fast-json-patch",
+  "version": "3.2.1",
+  "homepage": "https://github.com/javisantos/ordered-fast-json-patch",
+  "description": "Fast implementation of JSON-Patch (RFC-6902) with duplex (observe changes) capabilities and object key reordering support",
   "main": "dist/fast-json-patch.js",
-  "keywords": ["json", "patch", "http", "rest"],
+  "keywords": ["json", "patch", "http", "rest", "reorder", "object-keys"],
   "license": "MIT",
   "ignore": [
     ".npmignore",

@@ -3,7 +3,7 @@ Ordered Fast JSON-Patch
 
 > A fork of fast-json-patch with added support for object key reordering. Small footprint. High performance.
 
-[![Build Status](https://travis-ci.org/Starcounter-Jack/JSON-Patch.svg?branch=master)](https://travis-ci.org/Starcounter-Jack/JSON-Patch)
+[![Build Status](https://travis-ci.org/javisantos/ordered-fast-json-patch.svg?branch=master)](https://travis-ci.org/javisantos/ordered-fast-json-patch)
 
 With JSON-Patch, you can:
 - **apply** patches (arrays) and single operations on JS object
@@ -48,11 +48,11 @@ Mark Nottingham has a [nice blog]( http://www.mnot.net/blog/2012/09/05/patch) ab
 
 ## Install
 
-[Download as ZIP](https://github.com/Starcounter-Jack/JSON-Patch/archive/master.zip) or install the current version using a package manager (and save it as a dependency):
+[Download as ZIP](https://github.com/javisantos/ordered-fast-json-patch/archive/master.zip) or install the current version using a package manager (and save it as a dependency):
 
 ```sh
 # NPM
-npm install fast-json-patch --save
+npm install ordered-fast-json-patch --save
 ```
 
 
@@ -70,8 +70,8 @@ In [browsers that support ECMAScript modules](https://caniuse.com/#feat=es6-modu
 
 ```html
 <script type="module">
-  import * as jsonpatch from 'fast-json-patch/index.mjs';
-  import { applyOperation } from 'fast-json-patch/index.mjs';
+  import * as jsonpatch from 'ordered-fast-json-patch/index.mjs';
+  import { applyOperation } from 'ordered-fast-json-patch/index.mjs';
 </script>
 ```
 
@@ -80,22 +80,22 @@ In [browsers that support ECMAScript modules](https://caniuse.com/#feat=es6-modu
 In Node 12+ with `--experimental-modules` flag, the below code uses this library as an ECMAScript module:
 
 ```js
-import * as jsonpatch from 'fast-json-patch/index.mjs';
-import { applyOperation } from 'fast-json-patch/index.mjs';
+import * as jsonpatch from 'ordered-fast-json-patch/index.mjs';
+import { applyOperation } from 'ordered-fast-json-patch/index.mjs';
 ```
 
 In Webpack (and most surely other bundlers based on Babel), the below code uses this library as an ECMAScript module:
 
 ```js
-import * as jsonpatch from 'fast-json-patch';
-import { applyOperation } from 'fast-json-patch';
+import * as jsonpatch from 'ordered-fast-json-patch';
+import { applyOperation } from 'ordered-fast-json-patch';
 ```
 
 In standard Node, the below code uses this library as a CommonJS module:
 
 ```js
-const { applyOperation } = require('fast-json-patch');
-const applyOperation = require('fast-json-patch').applyOperation;
+const { applyOperation } = require('ordered-fast-json-patch');
+const applyOperation = require('ordered-fast-json-patch').applyOperation;
 ```
 
 ## Directories
