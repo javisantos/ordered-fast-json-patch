@@ -23,6 +23,12 @@
         "email": "joachimwester@me.com",
         "url": "http://www.starcounter.com/"
     },
+    "contributors": [
+        {
+            "name": "Javi Santos",
+            "email": "mail@javisantos.com"
+        }
+    ],
     "license": "MIT",
     "main": "index.js",
     "module": "index.mjs",

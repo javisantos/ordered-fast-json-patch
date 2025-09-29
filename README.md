@@ -10,6 +10,29 @@ With JSON-Patch, you can:
 - **validate** a sequence of patches
 - **observe** for changes and **generate** patches when a change is detected
 - **compare** two objects to obtain the difference
+- **automatically detect object key reordering** and generate `reorder` patches
+
+### 🆕 Automatic Object Key Reordering Detection
+
+This fork adds intelligent object key reordering detection to the `compare()` function. When comparing two objects, if the library detects that keys have been reordered (but contain the same values), it automatically generates a `reorder` patch operation instead of multiple `remove` and `add` operations.
+
+**Key Features:**
+- **Automatic Detection**: No configuration needed - just use `compare()` as usual
+- **Mixed Operations**: Handles reordering combined with value changes, additions, and removals
+- **Nested Support**: Detects reordering at any level of object nesting
+- **Performance Optimized**: Minimal overhead when no reordering is detected
+- **Backward Compatible**: All existing functionality remains unchanged
+
+```js
+const before = { c: 3, a: 1, b: 2 };
+const after  = { a: 1, b: 2, c: 3 };
+
+const patches = jsonpatch.compare(before, after);
+// Result: [{ op: "reorder", path: "", value: ["a", "b", "c"] }]
+
+jsonpatch.applyPatch(before, patches);
+// before is now { a: 1, b: 2, c: 3 } with keys in the correct order
+```
 
 Tested in Firefox, Chrome, Edge, Safari, IE11, Deno and Node.js
 
@@ -326,6 +349,8 @@ type Jsonable = JsonableArr | JsonableObj | string | number | boolean | null;
 
 Compares object trees `document1` and `document2` and returns the difference relative to `document1` as a patches array.  If `invertible` is true, then each change will be preceded by a test operation of the value in `document1`.
 
+**🆕 Automatic Reorder Detection**: When comparing objects, this function automatically detects when keys have been reordered and generates `reorder` patch operations instead of multiple `add`/`remove` operations. This works for nested objects and is combined intelligently with other operations like `replace`, `add`, and `remove`.
+
 If there are no differences, returns an empty array (length 0).
 
 Example:
@@ -346,6 +371,19 @@ var diff = jsonpatch.compare(documentA, documentB, true);
 //diff == [
 //   {op: "test", path: "/user/lastName", value: "Einstein"},
 //   {op: "replace", path: "/user/lastName", value: "Collins"}
+// ];
+```
+
+Example of automatic reorder detection:
+
+```js
+var documentA = {status: "pending", id: 123, name: "Task 1"};
+var documentB = {id: 123, name: "Updated Task", status: "completed"};
+var diff = jsonpatch.compare(documentA, documentB);
+//diff == [
+//   {op: "replace", path: "/name", value: "Updated Task"},
+//   {op: "replace", path: "/status", value: "completed"},
+//   {op: "reorder", path: "", value: ["id", "name", "status"]}
 // ];
 ```
 

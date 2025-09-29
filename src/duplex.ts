@@ -153,6 +153,32 @@ function _generate(mirror, obj, patches, path, invertible) {
   var oldKeys = _objectKeys(mirror);
   var changed = false;
   var deleted = false;
+  var pendingReorderPatch = null;
+
+  // Check for key reordering if both are objects (not arrays)
+  var shouldCheckReorder = !Array.isArray(obj) && !Array.isArray(mirror) && 
+                          typeof obj === 'object' && typeof mirror === 'object' &&
+                          obj !== null && mirror !== null;
+  
+  if (shouldCheckReorder) {
+    // Check if the key order is different (regardless of adds/removes)
+    var orderChanged = false;
+    for (var i = 0; i < newKeys.length; i++) {
+      if (newKeys[i] !== oldKeys[i]) {
+        orderChanged = true;
+        break;
+      }
+    }
+    
+    // If order changed and we have keys in the new object, prepare reorder patch
+    if (orderChanged && newKeys.length > 0) {
+      pendingReorderPatch = {
+        op: "reorder",
+        path: path,
+        value: newKeys.slice() // copy the array
+      };
+    }
+  }
 
   //if ever "move" operation is implemented here, make sure this test runs OK: "should not generate the same patch twice (move)"
 
@@ -183,15 +209,25 @@ function _generate(mirror, obj, patches, path, invertible) {
       patches.push({ op: "remove", path: path + "/" + escapePathComponent(key) });
       deleted = true; // property has been deleted
     } else {
+      // This is a type change (object to array or vice versa)
       if (invertible) {
         patches.push({ op: "test", path, value: mirror });
       }
       patches.push({ op: "replace", path, value: obj });
       changed = true;
+      
+      // If this is a root replacement, we don't need to process remaining keys
+      if (path === "") {
+        return;
+      }
     }
   }
 
   if (!deleted && newKeys.length == oldKeys.length) {
+    // Add reorder patch if pending, regardless of value changes
+    if (pendingReorderPatch && !deleted) {
+      patches.push(pendingReorderPatch);
+    }
     return;
   }
 
@@ -200,6 +236,12 @@ function _generate(mirror, obj, patches, path, invertible) {
     if (!hasOwnProperty(mirror, key) && obj[key] !== undefined) {
       patches.push({ op: "add", path: path + "/" + escapePathComponent(key), value: _deepClone(obj[key]) });
     }
+  }
+  
+  // Add reorder patch after all other operations if there was reordering
+  // and we're dealing with objects (not arrays)
+  if (pendingReorderPatch && !Array.isArray(obj) && !Array.isArray(mirror)) {
+    patches.push(pendingReorderPatch);
   }
 }
 /**
