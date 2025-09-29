@@ -1,7 +1,7 @@
-JSON-Patch
+Ordered Fast JSON-Patch
 ===============
 
-> A leaner and meaner implementation of JSON-Patch. Small footprint. High performance.
+> A fork of fast-json-patch with added support for object key reordering. Small footprint. High performance.
 
 [![Build Status](https://travis-ci.org/Starcounter-Jack/JSON-Patch.svg?branch=master)](https://travis-ci.org/Starcounter-Jack/JSON-Patch)
 
@@ -154,6 +154,62 @@ var document = { firstName: "Albert", contactDetails: { phoneNumbers: [] } };
 var operation = { op: "replace", path: "/firstName", value: "Joachim" };
 document = jsonpatch.applyOperation(document, operation).newDocument;
 // document == { firstName: "Joachim", contactDetails: { phoneNumbers: [] }}
+```
+
+### Reorder Operation
+
+The `reorder` operation is a custom extension to JSON Patch that allows you to reorder the keys of an object. This is useful when you need to maintain a specific order of properties in JSON objects, which can be important for APIs that rely on property order or for generating consistent output.
+
+#### Usage
+
+```js
+var document = { c: 3, a: 1, b: 2 };
+var operation = { op: "reorder", path: "", value: ["a", "b", "c"] };
+document = jsonpatch.applyOperation(document, operation).newDocument;
+// document == { a: 1, b: 2, c: 3 }
+// Object.keys(document) == ["a", "b", "c"]
+```
+
+#### Reorder Operation Behavior
+
+- **Path**: Specifies the target object to reorder (use `""` for root object)
+- **Value**: An array of strings specifying the desired key order
+- **Key Handling**: 
+  - Keys specified in the `value` array are placed first in the specified order
+  - Keys not specified in the `value` array are appended at the end in their original order
+  - Non-existent keys in the `value` array are ignored
+- **Validation**: The operation throws an error if:
+  - The `value` is not an array
+  - The target is not an object (arrays, null, undefined, primitives are not allowed)
+  - The target path doesn't exist
+
+#### Examples
+
+```js
+// Partial reordering - unspecified keys go to the end
+var obj = { d: 4, a: 1, c: 3, b: 2 };
+var result = jsonpatch.applyOperation(obj, {
+  op: "reorder", 
+  path: "", 
+  value: ["a", "b"]
+}).newDocument;
+// result keys: ["a", "b", "c", "d"] (c and d keep their relative order)
+
+// Nested object reordering
+var obj = { data: { z: 26, a: 1, m: 13 } };
+var result = jsonpatch.applyOperation(obj, {
+  op: "reorder", 
+  path: "/data", 
+  value: ["a", "m", "z"]
+}).newDocument;
+// result.data keys: ["a", "m", "z"]
+
+// Mixed with other operations
+var patch = [
+  { op: "add", path: "/data/d", value: 4 },
+  { op: "reorder", path: "/data", value: ["a", "b", "c", "d"] },
+  { op: "replace", path: "/data/b", value: "modified" }
+];
 ```
 
 #### `jsonpatch.applyReducer<T>(document: T, operation: Operation, index: number): T`

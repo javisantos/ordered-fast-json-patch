@@ -5,12 +5,12 @@
  */
 declare var require: any;
 
-import { PatchError, _deepClone, isInteger, unescapePathComponent, hasUndefined } from './helpers.js';
+import { PatchError, _deepClone, isInteger, unescapePathComponent, hasUndefined, _objectKeys, hasOwnProperty } from './helpers.js';
 
 export const JsonPatchError = PatchError;
 export const deepClone = _deepClone;
 
-export type Operation = AddOperation<any> | RemoveOperation | ReplaceOperation<any> | MoveOperation | CopyOperation | TestOperation<any> | GetOperation<any>;
+export type Operation = AddOperation<any> | RemoveOperation | ReplaceOperation<any> | MoveOperation | CopyOperation | TestOperation<any> | GetOperation<any> | ReorderOperation;
 
 export interface Validator<T> {
   (operation: Operation, index: number, document: T, existingPathFragment: string): void;
@@ -59,6 +59,12 @@ export interface GetOperation<T> extends BaseOperation {
   op: '_get';
   value: T;
 }
+
+export interface ReorderOperation extends BaseOperation {
+  op: 'reorder';
+  value: string[];
+}
+
 export interface PatchResult<T> extends Array<OperationResult<T>> {
   newDocument: T;
 }
@@ -120,6 +126,56 @@ const objOps = {
   _get: function (obj, key, document) {
     this.value = obj[key];
     return { newDocument: document }
+  },
+  reorder: function (obj, key, document) {
+    if (!Array.isArray(this.value)) {
+      throw new JsonPatchError('Reorder operation must have an array as value', 'OPERATION_VALUE_REQUIRED', 0, this, document);
+    }
+    
+    const target = key === '' ? obj : obj[key];
+    
+    if (target === null || target === undefined) {
+      throw new JsonPatchError('Reorder operation cannot be applied to null or undefined', 'OPERATION_PATH_UNRESOLVABLE', 0, this, document);
+    }
+    
+    if (typeof target !== 'object' || Array.isArray(target)) {
+      throw new JsonPatchError('Reorder operation can only be applied to objects', 'OPERATION_PATH_UNRESOLVABLE', 0, this, document);
+    }
+    
+    const order = this.value;
+    const existingKeys = _objectKeys(target);
+    const newObj = {};
+    
+    // First, add keys in the specified order
+    for (let i = 0; i < order.length; i++) {
+      const orderedKey = order[i];
+      if (hasOwnProperty(target, orderedKey)) {
+        newObj[orderedKey] = target[orderedKey];
+      }
+    }
+    
+    // Then, add any remaining keys that weren't specified in the order
+    for (let i = 0; i < existingKeys.length; i++) {
+      const existingKey = existingKeys[i];
+      if (!hasOwnProperty(newObj, existingKey)) {
+        newObj[existingKey] = target[existingKey];
+      }
+    }
+    
+    // Replace the target object's properties with the reordered ones
+    // Clear all properties first
+    for (let i = 0; i < existingKeys.length; i++) {
+      delete target[existingKeys[i]];
+    }
+    
+    // Set properties in the new order
+    const newKeys = _objectKeys(newObj);
+    for (let i = 0; i < newKeys.length; i++) {
+      const prop = newKeys[i];
+      target[prop] = newObj[prop];
+    }
+    
+    return { newDocument: document };
   }
 };
 
@@ -146,7 +202,8 @@ var arrOps = {
   move: objOps.move,
   copy: objOps.copy,
   test: objOps.test,
-  _get: objOps._get
+  _get: objOps._get,
+  reorder: objOps.reorder
 };
 
 /**
@@ -218,6 +275,42 @@ export function applyOperation<T>(document: T, operation: Operation, validateOpe
       return returnValue;
     } else if (operation.op === '_get') {
       operation.value = document;
+      return returnValue;
+    } else if (operation.op === 'reorder') {
+      // For root reorder operation, we apply it to the entire document
+      if (!Array.isArray(operation.value)) {
+        throw new JsonPatchError('Reorder operation must have an array as value', 'OPERATION_VALUE_REQUIRED', 0, operation, document);
+      }
+      
+      if (document === null || document === undefined) {
+        throw new JsonPatchError('Reorder operation cannot be applied to null or undefined', 'OPERATION_PATH_UNRESOLVABLE', 0, operation, document);
+      }
+      
+      if (typeof document !== 'object' || Array.isArray(document)) {
+        throw new JsonPatchError('Reorder operation can only be applied to objects', 'OPERATION_PATH_UNRESOLVABLE', 0, operation, document);
+      }
+      
+      const order = operation.value;
+      const existingKeys = _objectKeys(document);
+      const newObj = {};
+      
+      // First, add keys in the specified order
+      for (let i = 0; i < order.length; i++) {
+        const orderedKey = order[i];
+        if (hasOwnProperty(document, orderedKey)) {
+          newObj[orderedKey] = document[orderedKey];
+        }
+      }
+      
+      // Then, add any remaining keys that weren't specified in the order
+      for (let i = 0; i < existingKeys.length; i++) {
+        const existingKey = existingKeys[i];
+        if (!hasOwnProperty(newObj, existingKey)) {
+          newObj[existingKey] = document[existingKey];
+        }
+      }
+      
+      returnValue.newDocument = newObj as T;
       return returnValue;
     } else { /* bad operation */
       if (validateOperation) {

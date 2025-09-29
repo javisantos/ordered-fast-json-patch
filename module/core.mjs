@@ -1,4 +1,4 @@
-import { PatchError, _deepClone, isInteger, unescapePathComponent, hasUndefined } from './helpers.mjs';
+import { PatchError, _deepClone, isInteger, unescapePathComponent, hasUndefined, _objectKeys, hasOwnProperty } from './helpers.mjs';
 export var JsonPatchError = PatchError;
 export var deepClone = _deepClone;
 /* We use a Javascript hash to store each
@@ -47,6 +47,47 @@ var objOps = {
     _get: function (obj, key, document) {
         this.value = obj[key];
         return { newDocument: document };
+    },
+    reorder: function (obj, key, document) {
+        if (!Array.isArray(this.value)) {
+            throw new JsonPatchError('Reorder operation must have an array as value', 'OPERATION_VALUE_REQUIRED', 0, this, document);
+        }
+        var target = key === '' ? obj : obj[key];
+        if (target === null || target === undefined) {
+            throw new JsonPatchError('Reorder operation cannot be applied to null or undefined', 'OPERATION_PATH_UNRESOLVABLE', 0, this, document);
+        }
+        if (typeof target !== 'object' || Array.isArray(target)) {
+            throw new JsonPatchError('Reorder operation can only be applied to objects', 'OPERATION_PATH_UNRESOLVABLE', 0, this, document);
+        }
+        var order = this.value;
+        var existingKeys = _objectKeys(target);
+        var newObj = {};
+        // First, add keys in the specified order
+        for (var i = 0; i < order.length; i++) {
+            var orderedKey = order[i];
+            if (hasOwnProperty(target, orderedKey)) {
+                newObj[orderedKey] = target[orderedKey];
+            }
+        }
+        // Then, add any remaining keys that weren't specified in the order
+        for (var i = 0; i < existingKeys.length; i++) {
+            var existingKey = existingKeys[i];
+            if (!hasOwnProperty(newObj, existingKey)) {
+                newObj[existingKey] = target[existingKey];
+            }
+        }
+        // Replace the target object's properties with the reordered ones
+        // Clear all properties first
+        for (var i = 0; i < existingKeys.length; i++) {
+            delete target[existingKeys[i]];
+        }
+        // Set properties in the new order
+        var newKeys = _objectKeys(newObj);
+        for (var i = 0; i < newKeys.length; i++) {
+            var prop = newKeys[i];
+            target[prop] = newObj[prop];
+        }
+        return { newDocument: document };
     }
 };
 /* The operations applicable to an array. Many are the same as for the object */
@@ -73,7 +114,8 @@ var arrOps = {
     move: objOps.move,
     copy: objOps.copy,
     test: objOps.test,
-    _get: objOps._get
+    _get: objOps._get,
+    reorder: objOps.reorder
 };
 /**
  * Retrieves a value from a JSON document by a JSON pointer.
@@ -152,6 +194,37 @@ export function applyOperation(document, operation, validateOperation, mutateDoc
         }
         else if (operation.op === '_get') {
             operation.value = document;
+            return returnValue;
+        }
+        else if (operation.op === 'reorder') {
+            // For root reorder operation, we apply it to the entire document
+            if (!Array.isArray(operation.value)) {
+                throw new JsonPatchError('Reorder operation must have an array as value', 'OPERATION_VALUE_REQUIRED', 0, operation, document);
+            }
+            if (document === null || document === undefined) {
+                throw new JsonPatchError('Reorder operation cannot be applied to null or undefined', 'OPERATION_PATH_UNRESOLVABLE', 0, operation, document);
+            }
+            if (typeof document !== 'object' || Array.isArray(document)) {
+                throw new JsonPatchError('Reorder operation can only be applied to objects', 'OPERATION_PATH_UNRESOLVABLE', 0, operation, document);
+            }
+            var order = operation.value;
+            var existingKeys = _objectKeys(document);
+            var newObj = {};
+            // First, add keys in the specified order
+            for (var i = 0; i < order.length; i++) {
+                var orderedKey = order[i];
+                if (hasOwnProperty(document, orderedKey)) {
+                    newObj[orderedKey] = document[orderedKey];
+                }
+            }
+            // Then, add any remaining keys that weren't specified in the order
+            for (var i = 0; i < existingKeys.length; i++) {
+                var existingKey = existingKeys[i];
+                if (!hasOwnProperty(newObj, existingKey)) {
+                    newObj[existingKey] = document[existingKey];
+                }
+            }
+            returnValue.newDocument = newObj;
             return returnValue;
         }
         else { /* bad operation */

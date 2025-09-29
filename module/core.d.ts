@@ -1,7 +1,7 @@
 import { PatchError, _deepClone } from './helpers.js';
 export declare const JsonPatchError: typeof PatchError;
 export declare const deepClone: typeof _deepClone;
-export declare type Operation = AddOperation<any> | RemoveOperation | ReplaceOperation<any> | MoveOperation | CopyOperation | TestOperation<any> | GetOperation<any>;
+export declare type Operation = AddOperation<any> | RemoveOperation | ReplaceOperation<any> | MoveOperation | CopyOperation | TestOperation<any> | GetOperation<any> | ReorderOperation;
 export interface Validator<T> {
     (operation: Operation, index: number, document: T, existingPathFragment: string): void;
 }
@@ -39,6 +39,10 @@ export interface TestOperation<T> extends BaseOperation {
 export interface GetOperation<T> extends BaseOperation {
     op: '_get';
     value: T;
+}
+export interface ReorderOperation extends BaseOperation {
+    op: 'reorder';
+    value: string[];
 }
 export interface PatchResult<T> extends Array<OperationResult<T>> {
     newDocument: T;
